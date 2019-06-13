@@ -1,6 +1,6 @@
 ---
 layout: posts
-title: "Killing the flags: bazel with remote execution and caching"
+title: "Bazel Remote: Killing the flags"
 authors:
   - ishikhman
 ---
@@ -8,7 +8,7 @@ tl;dr: How does one configure bazel build to work with a remote execution or rem
 
 ## What happened?
 
-We've been working on improving a flag situation for a while, therefore the changes did not happen in one release unfortunately. Let's see when and what has changed or will change.
+We've been working on improving a flag situation for a while, therefore the changes did not happen in one release but over a few releases and some of them are only planned to happen in the future releases. Let's see when and what has changed or will change.
 
 ### bazel 0.26
 
@@ -47,25 +47,35 @@ Some small improvements happened over here.
 
  	=> consequences such as:
 	
-	- default behavior: remote,worker,sandboxed,local
-	- sandboxed is not invoked if OS does not support sadnboxing (Windows)
-	- no more fallbacks to implicit strategy - only to pre-defined ones
-	- how to migrate
-		- link or short description?
+	- The user can pass comma-separated lists of strategies to the strategy related flags: `--spawn_strategy=remote,worker,linux-sandbox`. 
+	- default behavior: Use remote execution if it's available, otherwise persistent workers, otherwise sandboxed execution, otherwise non-sandboxed execution.
+	- If action cannot be executed with any of the given strategies, build will fail. 
+	
+	See more details and *how to migrate* advice over here: [list based strategy](2019-06-27-list-strategy.md)
 
+#### Backward compatible changes:
 
-* `--tls_enabled` is now deprecated. 
+* `--tls_enabled` is now deprecated
+* TLS is enabled by default for gRPC connections and hidden behind `--icompatible_tls_enabled_removed` flag
+
 use `--icompatible_tls_enabled_removed` flag to test 
 https://github.com/bazelbuild/bazel/issues/8061
+
+How to use it:
+This flag was introduced to enable TLS for gRPC communication, 'grpc://' or 'grpcs://' are not something default like 'http://' or 'https://'.
+At this point we decided that it's time to get rid of this flag and enable TLS by default for all gRPC messages bazel send.
+
+`--remote_cache=someurl.com` would mean use 'someurl.com' to send there gRPC messages via TLS
+`--remote_cache=grpc://notls.com` would mean send it to 'notls.com' via gRPC without TLS
+
+Nothing changed for HTTP:
+`--remote_cache=http://restcache.com` vs `--remote_cache=https://securecache.come`
 
 How to migrate
 
 `--tls_enabled --remote_executor=remoteexecutor.url.com` 
 => `--remote_executor=remoteexecutor.url.com`
 or `--remote_executor=grpcs://remoteexecutor.url.com`
-
-
-
 	
 	
 Removed:	
